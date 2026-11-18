@@ -12,17 +12,15 @@ final class CoreDataItemsRepository: ItemsRepository {
     // MARK: - Properties
 
     private static let categoriesCount = 1_000
-    private static let titleLength = 8
-    private static let titleLetters = Array("abcdefghijklmnopqrstuvwxyz")
-    private static let valueRange: ClosedRange<Int64> = 0...1_000_000
-    private static let secondsInYear: TimeInterval = 365 * 24 * 60 * 60
 
-    private let persistence: PersistenceController
+    private let persistence: PersistenceControllerProtocol
+    private let dataGenerator: ItemsDataGeneratorProtocol
 
     // MARK: - Init
 
-    init(persistence: PersistenceController) {
+    init(persistence: PersistenceControllerProtocol, dataGenerator: ItemsDataGeneratorProtocol) {
         self.persistence = persistence
+        self.dataGenerator = dataGenerator
     }
 
     // MARK: - ItemsRepository
@@ -48,7 +46,7 @@ final class CoreDataItemsRepository: ItemsRepository {
     func fetchRows() async throws -> [ItemRow] {
         let context = persistence.newBackgroundContext()
         return try await context.perform {
-            let request = NSFetchRequest<NSDictionary>(entityName: String(describing: Item.self))
+            let request = NSFetchRequest<NSDictionary>(entityName: Item.entityName)
             request.resultType = .dictionaryResultType
             request.propertiesToFetch = ["id", "title"]
 
@@ -75,11 +73,12 @@ private extension CoreDataItemsRepository {
     }
 
     func insertCategories(in context: NSManagedObjectContext) async throws -> [NSManagedObjectID] {
-        try await context.perform {
+        let generator = dataGenerator
+        return try await context.perform {
             let categories = (0..<Self.categoriesCount).map { _ in
                 let category = Category(context: context)
                 category.id = UUID()
-                category.title = Self.randomTitle()
+                category.title = generator.makeTitle()
                 return category
             }
             try context.save()
@@ -97,6 +96,7 @@ private extension CoreDataItemsRepository {
         categoryIDs: [NSManagedObjectID],
         in context: NSManagedObjectContext
     ) async throws {
+        let generator = dataGenerator
         var inserted = 0
         while inserted < count {
             let size = min(batchSize, count - inserted)
@@ -106,9 +106,9 @@ private extension CoreDataItemsRepository {
                     for _ in 0..<size {
                         let item = Item(context: context)
                         item.id = UUID()
-                        item.title = Self.randomTitle()
-                        item.value = Self.randomValue()
-                        item.createdAt = Self.randomDate()
+                        item.title = generator.makeTitle()
+                        item.value = generator.makeValue()
+                        item.createdAt = generator.makeDate()
                         item.category = categories.randomElement()
                     }
                     try context.save()
@@ -120,19 +120,7 @@ private extension CoreDataItemsRepository {
     }
 
     static func deleteAll<T: NSManagedObject>(_ type: T.Type, in context: NSManagedObjectContext) throws {
-        let request = NSFetchRequest<NSFetchRequestResult>(entityName: String(describing: type))
+        let request = NSFetchRequest<NSFetchRequestResult>(entityName: T.entityName)
         try context.execute(NSBatchDeleteRequest(fetchRequest: request))
-    }
-
-    static func randomTitle() -> String {
-        String((0..<titleLength).compactMap { _ in titleLetters.randomElement() })
-    }
-
-    static func randomValue() -> Int64 {
-        Int64.random(in: valueRange)
-    }
-
-    static func randomDate() -> Date {
-        Date(timeIntervalSinceNow: -TimeInterval.random(in: 0...secondsInYear))
     }
 }

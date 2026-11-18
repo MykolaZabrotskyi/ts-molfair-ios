@@ -9,13 +9,19 @@ import SnapKit
 import UIKit
 
 @MainActor
+protocol ItemsViewControllerProtocol: AnyObject {
+    func render(with viewState: ItemsViewState)
+}
+
+@MainActor
 final class ItemsViewController: UIViewController {
 
     // MARK: - Properties
 
+    var presenter: ItemsPresenterProtocol?
+
     private static let cellIdentifier = "ItemCell"
 
-    private let presenter: ItemsPresenter
     private var rows: [ItemRow] = []
 
     private let generateButton = UIButton(configuration: .filled())
@@ -23,18 +29,6 @@ final class ItemsViewController: UIViewController {
     private let countLabel = UILabel()
     private let activityIndicator = UIActivityIndicatorView(style: .medium)
     private let tableView = UITableView()
-
-    // MARK: - Init
-
-    init(presenter: ItemsPresenter) {
-        self.presenter = presenter
-        super.init(nibName: nil, bundle: nil)
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
 
     // MARK: - Lifecycle
 
@@ -46,33 +40,31 @@ final class ItemsViewController: UIViewController {
         configureActivityIndicator()
         configureTableView()
         layoutSubviews()
+        presenter?.perform(with: .onLoad)
     }
 }
 
-// MARK: - ItemsView
+// MARK: - ItemsViewControllerProtocol
 
-extension ItemsViewController: ItemsView {
+extension ItemsViewController: ItemsViewControllerProtocol {
 
-    func setLoading(_ isLoading: Bool) {
-        if isLoading {
-            activityIndicator.startAnimating()
-        } else {
-            activityIndicator.stopAnimating()
+    func render(with viewState: ItemsViewState) {
+        renderTexts(viewState.texts)
+
+        switch viewState.kind {
+        case .loading:
+            setLoading(true)
+
+        case .loaded(let rows, let countText):
+            setLoading(false)
+            self.rows = rows
+            countLabel.text = countText
+            tableView.reloadData()
+
+        case .error(let message):
+            setLoading(false)
+            showError(message, texts: viewState.texts)
         }
-        generateButton.isEnabled = !isLoading
-        loadButton.isEnabled = !isLoading
-    }
-
-    func showRows(_ rows: [ItemRow], countText: String) {
-        self.rows = rows
-        countLabel.text = countText
-        tableView.reloadData()
-    }
-
-    func showError(_ message: String) {
-        let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
     }
 }
 
@@ -101,19 +93,16 @@ extension ItemsViewController: UITableViewDataSource {
 private extension ItemsViewController {
 
     func configureButtons() {
-        generateButton.configuration?.title = "Generate"
         generateButton.addAction(UIAction { [weak self] _ in
-            self?.presenter.didTapGenerate()
+            self?.presenter?.perform(with: .onGenerateTapped)
         }, for: .touchUpInside)
 
-        loadButton.configuration?.title = "Load"
         loadButton.addAction(UIAction { [weak self] _ in
-            self?.presenter.didTapLoad()
+            self?.presenter?.perform(with: .onLoadTapped)
         }, for: .touchUpInside)
     }
 
     func configureCountLabel() {
-        countLabel.text = "Rows: 0"
         countLabel.font = .preferredFont(forTextStyle: .headline)
         countLabel.adjustsFontForContentSizeCategory = true
     }
@@ -159,5 +148,27 @@ private extension ItemsViewController {
             make.top.equalTo(countLabel.snp.bottom).offset(16)
             make.leading.trailing.bottom.equalToSuperview()
         }
+    }
+
+    func renderTexts(_ texts: ItemsViewState.Texts) {
+        title = texts.navigationTitle
+        generateButton.configuration?.title = texts.generateButtonTitle
+        loadButton.configuration?.title = texts.loadButtonTitle
+    }
+
+    func setLoading(_ isLoading: Bool) {
+        if isLoading {
+            activityIndicator.startAnimating()
+        } else {
+            activityIndicator.stopAnimating()
+        }
+        generateButton.isEnabled = !isLoading
+        loadButton.isEnabled = !isLoading
+    }
+
+    func showError(_ message: String, texts: ItemsViewState.Texts) {
+        let alert = UIAlertController(title: texts.errorTitle, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: texts.errorOkAction, style: .default))
+        present(alert, animated: true)
     }
 }

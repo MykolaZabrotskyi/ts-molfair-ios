@@ -17,10 +17,4 @@ final class Item: NSManagedObject {
     @NSManaged var value: Int64
     @NSManaged var createdAt: Date
     @NSManaged var category: Category?
-
-    // MARK: - Internal Methods
-
-    @nonobjc class func fetchRequest() -> NSFetchRequest<Item> {
-        NSFetchRequest<Item>(entityName: "Item")
-    }
 }

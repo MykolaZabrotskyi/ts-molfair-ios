@@ -7,38 +7,58 @@
 
 import Foundation
 
+enum ItemsPresenterAction {
+    case onLoad
+    case onGenerateTapped
+    case onLoadTapped
+}
+
+@MainActor
+protocol ItemsPresenterProtocol: AnyObject {
+    func perform(with action: ItemsPresenterAction)
+}
+
 @MainActor
 final class ItemsPresenter {
 
     // MARK: - Properties
 
-    weak var view: ItemsView?
-
     private static let generatedItemsCount = 100_000
     private static let batchSize = 5_000
 
+    private weak var viewController: ItemsViewControllerProtocol?
     private let repository: ItemsRepository
-    private var isBusy = false
+    private let viewStateFactory: ItemsViewStateFactoryProtocol
+    private var rows: [ItemRow] = []
+    private var isLoading = false
 
     // MARK: - Init
 
-    init(repository: ItemsRepository) {
+    init(
+        viewController: ItemsViewControllerProtocol,
+        repository: ItemsRepository,
+        viewStateFactory: ItemsViewStateFactoryProtocol
+    ) {
+        self.viewController = viewController
         self.repository = repository
+        self.viewStateFactory = viewStateFactory
     }
+}
 
-    // MARK: - Internal Methods
+// MARK: - ItemsPresenterProtocol
 
-    func didTapGenerate() {
-        run {
-            try await self.repository.generate(count: Self.generatedItemsCount, batchSize: Self.batchSize)
-            self.view?.showRows([], countText: Self.countText(for: 0))
-        }
-    }
+extension ItemsPresenter: ItemsPresenterProtocol {
 
-    func didTapLoad() {
-        run {
-            let rows = try await self.repository.fetchRows()
-            self.view?.showRows(rows, countText: Self.countText(for: rows.count))
+    func perform(with action: ItemsPresenterAction) {
+        switch action {
+        case .onLoad:
+            render(.loaded(rows: rows))
+
+        case .onGenerateTapped:
+            generate()
+
+        case .onLoadTapped:
+            load()
         }
     }
 }
@@ -47,34 +67,43 @@ final class ItemsPresenter {
 
 private extension ItemsPresenter {
 
-    /// Runs `operation` in a `Task` unless another one is still going. The busy flag is set before
-    /// the task starts, so a second tap in the same run loop turn is already ignored.
-    func run(_ operation: @escaping @MainActor () async throws -> Void) {
-        guard !isBusy else { return }
-        isBusy = true
-        view?.setLoading(true)
+    /// The `isLoading` check runs inside the task. Tasks started from the main actor run one after another,
+    /// so a second tap sees the flag already set by the first and is ignored.
+    func generate() {
+        Task { [weak self] in
+            guard let self, !isLoading else { return }
+            isLoading = true
+            render(.loading)
 
-        Task {
             do {
-                try await operation()
+                try await repository.generate(count: Self.generatedItemsCount, batchSize: Self.batchSize)
+                isLoading = false
+                render(.loaded(rows: rows))
             } catch {
-                view?.showError(Self.message(for: error))
+                isLoading = false
+                render(.error(error))
             }
-            isBusy = false
-            view?.setLoading(false)
         }
     }
 
-    static func countText(for count: Int) -> String {
-        "Rows: \(count.formatted())"
+    func load() {
+        Task { [weak self] in
+            guard let self, !isLoading else { return }
+            isLoading = true
+            render(.loading)
+
+            do {
+                rows = try await repository.fetchRows()
+                isLoading = false
+                render(.loaded(rows: rows))
+            } catch {
+                isLoading = false
+                render(.error(error))
+            }
+        }
     }
 
-    static func message(for error: Error) -> String {
-        switch error {
-        case ItemsRepositoryError.invalidArguments:
-            return "Invalid generation parameters."
-        default:
-            return "Operation failed: \(error.localizedDescription)"
-        }
+    func render(_ input: ItemsViewStateFactoryInput) {
+        viewController?.render(with: viewStateFactory.make(from: input))
     }
 }

@@ -15,10 +15,4 @@ final class Category: NSManagedObject {
     @NSManaged var id: UUID
     @NSManaged var title: String
     @NSManaged var items: Set<Item>
-
-    // MARK: - Internal Methods
-
-    @nonobjc class func fetchRequest() -> NSFetchRequest<Category> {
-        NSFetchRequest<Category>(entityName: "Category")
-    }
 }

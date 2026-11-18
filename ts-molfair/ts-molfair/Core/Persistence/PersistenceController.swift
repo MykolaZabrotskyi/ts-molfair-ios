@@ -7,16 +7,22 @@
 
 import CoreData
 
+protocol PersistenceControllerProtocol {
+    func newBackgroundContext() -> NSManagedObjectContext
+}
+
 final class PersistenceController {
 
     // MARK: - Properties
+
+    private static let modelName = "Model"
 
     let container: NSPersistentContainer
 
     // MARK: - Init
 
     init(inMemory: Bool = false) {
-        container = NSPersistentContainer(name: "Model")
+        container = NSPersistentContainer(name: PersistenceController.modelName)
 
         if inMemory {
             container.persistentStoreDescriptions.first?.url = URL(fileURLWithPath: "/dev/null")
@@ -28,8 +34,11 @@ final class PersistenceController {
             }
         }
     }
+}
 
-    // MARK: - Internal Methods
+// MARK: - PersistenceControllerProtocol
+
+extension PersistenceController: PersistenceControllerProtocol {
 
     func newBackgroundContext() -> NSManagedObjectContext {
         container.newBackgroundContext()

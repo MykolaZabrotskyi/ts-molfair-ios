@@ -42,6 +42,24 @@ final class CoreDataItemsRepository: ItemsRepository {
         let categoryIDs = try await insertCategories(in: context)
         try await insertItems(count: count, batchSize: batchSize, categoryIDs: categoryIDs, in: context)
     }
+
+    /// Reads only `id` and `title` as dictionaries on a background context. No managed objects are
+    /// created, so 100 000 rows stay cheap, and only `Sendable` values leave the context.
+    func fetchRows() async throws -> [ItemRow] {
+        let context = persistence.newBackgroundContext()
+        return try await context.perform {
+            let request = NSFetchRequest<NSDictionary>(entityName: String(describing: Item.self))
+            request.resultType = .dictionaryResultType
+            request.propertiesToFetch = ["id", "title"]
+
+            return try context.fetch(request).compactMap { row in
+                guard let id = row["id"] as? UUID, let title = row["title"] as? String else {
+                    return nil
+                }
+                return ItemRow(id: id, title: title)
+            }
+        }
+    }
 }
 
 // MARK: - Private Methods

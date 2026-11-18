@@ -23,6 +23,9 @@ final class ItemsAssembly {
         )
 
         viewController.presenter = presenter
-        return viewController
+
+        let navigationController = UINavigationController(rootViewController: viewController)
+        navigationController.navigationBar.prefersLargeTitles = true
+        return navigationController
     }
 }

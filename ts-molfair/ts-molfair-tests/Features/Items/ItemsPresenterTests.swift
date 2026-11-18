@@ -174,7 +174,8 @@ private extension ItemsPresenterTests {
         (0..<count).map { ItemRow(id: UUID(), title: "title \($0)") }
     }
 
+    /// Only used for counts below one thousand, where no grouping separator is involved.
     func expectedCountText(for count: Int) -> String {
-        "Rows: \(count.formatted())"
+        "Rows: \(count)"
     }
 }

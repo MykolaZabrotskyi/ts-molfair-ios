@@ -18,7 +18,16 @@ final class ItemsViewStateFactoryTests: XCTestCase {
     // MARK: - Tests
 
     func test_makeLoaded_countTextMatchesNumberOfRows() {
-        for count in [0, 1, 1_234] {
+        let narrowNoBreakSpace = "\u{202F}"
+        let expectedTexts = [
+            0: "Rows: 0",
+            1: "Rows: 1",
+            999: "Rows: 999",
+            1_234: "Rows: 1\(narrowNoBreakSpace)234",
+            100_000: "Rows: 100\(narrowNoBreakSpace)000"
+        ]
+
+        for (count, expectedText) in expectedTexts {
             let rows = (0..<count).map { ItemRow(id: UUID(), title: "title \($0)") }
 
             let state = sut.make(from: .loaded(rows: rows))
@@ -27,8 +36,16 @@ final class ItemsViewStateFactoryTests: XCTestCase {
                 return XCTFail("Expected a loaded state for \(count) rows")
             }
             XCTAssertEqual(loadedRows.count, count)
-            XCTAssertEqual(countText, "Rows: \(count.formatted())")
+            XCTAssertEqual(countText, expectedText)
         }
+    }
+
+    func test_makeTexts_emptyMessageMentionsTheGeneratedCount() {
+        let factory = ItemsViewStateFactory(generatedItemsCount: 100_000)
+
+        let texts = factory.make(from: .loading).texts
+
+        XCTAssertTrue(texts.emptyMessage.contains("100\u{202F}000"))
     }
 
     func test_makeError_messageContainsLocalizedDescription() {
@@ -57,6 +74,9 @@ final class ItemsViewStateFactoryTests: XCTestCase {
             XCTAssertFalse(texts.loadButtonTitle.isEmpty)
             XCTAssertFalse(texts.errorTitle.isEmpty)
             XCTAssertFalse(texts.errorOkAction.isEmpty)
+            XCTAssertFalse(texts.emptyTitle.isEmpty)
+            XCTAssertFalse(texts.emptyMessage.isEmpty)
+            XCTAssertFalse(texts.spinnerAccessibilityLabel.isEmpty)
         }
     }
 }

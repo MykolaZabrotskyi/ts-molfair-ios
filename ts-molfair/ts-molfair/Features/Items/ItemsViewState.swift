@@ -17,6 +17,9 @@ struct ItemsViewState {
         let loadButtonTitle: String
         let errorTitle: String
         let errorOkAction: String
+        let emptyTitle: String
+        let emptyMessage: String
+        let spinnerAccessibilityLabel: String
     }
 
     enum Kind {

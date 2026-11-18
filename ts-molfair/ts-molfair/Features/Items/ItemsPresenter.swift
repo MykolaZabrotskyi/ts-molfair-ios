@@ -23,7 +23,7 @@ final class ItemsPresenter {
 
     // MARK: - Properties
 
-    private static let generatedItemsCount = 100_000
+    nonisolated static let generatedItemsCount = 100_000
     private static let batchSize = 5_000
 
     private weak var viewController: ItemsViewControllerProtocol?

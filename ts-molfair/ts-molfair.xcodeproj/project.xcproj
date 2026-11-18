@@ -10,6 +10,15 @@
       "Base",
     ],
   },
+  "packages": [
+    {
+      "kind": "remote",
+      "repository": "https://github.com/SnapKit/SnapKit.git",
+      "version": {
+        "up-to-next-major-version": "6.0.0",
+      },
+    },
+  ],
   "files": [
     {
       "kind": "folder",
@@ -43,6 +52,13 @@
         "compile-sources",
         "frameworks",
         "resources",
+      ],
+      "package-product-members": [
+        {
+          "package": "SnapKit",
+          "product-name": "SnapKit",
+          "build-phase": { "build-phase": "frameworks" },
+        },
       ],
       "build-settings": {
         "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",

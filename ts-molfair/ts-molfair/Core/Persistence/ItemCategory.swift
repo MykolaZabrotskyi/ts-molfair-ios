@@ -1,5 +1,5 @@
 //
-//  Category.swift
+//  ItemCategory.swift
 //  ts-molfair
 //
 //  Created by Mykola Zabrotskyi on 18.11.2026.
@@ -7,8 +7,8 @@
 
 import CoreData
 
-@objc(Category)
-final class Category: NSManagedObject {
+@objc(ItemCategory)
+final class ItemCategory: NSManagedObject {
 
     // MARK: - Properties
 

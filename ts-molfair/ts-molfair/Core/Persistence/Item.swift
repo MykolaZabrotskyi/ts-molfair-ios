@@ -16,5 +16,5 @@ final class Item: NSManagedObject {
     @NSManaged var title: String
     @NSManaged var value: Int64
     @NSManaged var createdAt: Date
-    @NSManaged var category: Category?
+    @NSManaged var category: ItemCategory?
 }

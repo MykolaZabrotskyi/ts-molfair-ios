@@ -68,7 +68,7 @@ private extension CoreDataItemsRepository {
     func deleteAllData(in context: NSManagedObjectContext) async throws {
         try await context.perform {
             try Self.deleteAll(Item.self, in: context)
-            try Self.deleteAll(Category.self, in: context)
+            try Self.deleteAll(ItemCategory.self, in: context)
         }
     }
 
@@ -76,7 +76,7 @@ private extension CoreDataItemsRepository {
         let generator = dataGenerator
         return try await context.perform {
             let categories = (0..<Self.categoriesCount).map { _ in
-                let category = Category(context: context)
+                let category = ItemCategory(context: context)
                 category.id = UUID()
                 category.title = generator.makeTitle()
                 return category
@@ -102,7 +102,7 @@ private extension CoreDataItemsRepository {
             let size = min(batchSize, count - inserted)
             try await context.perform {
                 try autoreleasepool {
-                    let categories = categoryIDs.compactMap { context.object(with: $0) as? Category }
+                    let categories = categoryIDs.compactMap { context.object(with: $0) as? ItemCategory }
                     for _ in 0..<size {
                         let item = Item(context: context)
                         item.id = UUID()
